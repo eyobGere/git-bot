@@ -1,13 +1,13 @@
 
-    impl FromStr for Month {
-        type Err = ();
-
-        fn from_str(input: &str) -> Result<Month, Self::Err> {
-            match input {
-                "Jan" => Ok(Month::Jan),
-                "Feb" => Ok(Month::Feb),
-                "Mar" => Ok(Month::Mar),
-                "Apr" => Ok(Month::Apr),
-                "May" => Ok(Month::May),
-                "Jun" => Ok(Month::Jun),
-                "Jul" => Ok(Month::Jul),
+    enum Month {
+        Jan,
+        Feb,
+        Mar,
+        Apr,
+        May,
+        Jun,
+        Jul,
+        Aug,
+        Sep,
+        Oct,
+        Nov,
