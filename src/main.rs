@@ -8,8 +8,8 @@ use std::str::FromStr;
 fn main() {
     let daily_commits = daily_commit_amount_randomizer();
     let random_increments = commit_date_randomizer();
-    let (day, month) = user_inputs();
-    function_that_does_the_job(daily_commits, random_increments, day, month);
+    let (day, month, file_path) = user_inputs();
+    function_that_does_the_job(daily_commits, random_increments, day, month, &file_path);
 }
 
 fn daily_commit_amount_randomizer() -> i32 {
@@ -23,9 +23,7 @@ fn commit_date_randomizer() -> i32 {
     random_increments
 }
 
-fn function_that_does_the_job(daily_commits: i32, _random_increments: i32, day: String, month: String) {
-    let file_path = "../sample code/this.rs";
-    
+fn function_that_does_the_job(daily_commits: i32, _random_increments: i32, day: String, month: String, file_path: &str) {
     for _ in 0..daily_commits {
         // Read file lines
         let lines = match read_file_lines(file_path) {
@@ -39,7 +37,7 @@ fn function_that_does_the_job(daily_commits: i32, _random_increments: i32, day: 
         // Select random segment
         if let Some(segment) = select_random_segment(&lines, 10, 80) {
             // Create a new file with the selected segment
-            let new_file_path = "../sample code/generated.rs";
+            let new_file_path = "generated_file.txt";
             if let Err(e) = write_segment_to_file(new_file_path, &segment) {
                 eprintln!("Error writing to new file: {}", e);
                 return;
@@ -80,7 +78,7 @@ fn function_that_does_the_job(daily_commits: i32, _random_increments: i32, day: 
             }
 
             // Push the changes
-            if !run_command("git", &["push", "--force", "origin", "main"]) {
+            if !run_command("git", &["push","origin", "main", "--force"]) {
                 eprintln!("Failed to push the changes");
                 return;
             }
@@ -131,7 +129,7 @@ fn run_command(command: &str, args: &[&str]) -> bool {
     status.success()
 }
 
-fn user_inputs() -> (String, String) {
+fn user_inputs() -> (String, String, String) {
     #[derive(Debug)]
     enum Date {
         Mon,
@@ -212,6 +210,13 @@ fn user_inputs() -> (String, String) {
         .expect("Failed to read line for month");
     let month = month.trim().to_string();
 
-    (day, month)
+    println!("Enter the file path you want to read from:");
+    let mut file_path = String::new();
+    io::stdin()
+        .read_line(&mut file_path)
+        .expect("Failed to read line for file path");
+    let file_path = file_path.trim().to_string();
+
+    (day, month, file_path)
 }
 
