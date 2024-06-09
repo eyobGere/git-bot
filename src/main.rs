@@ -7,22 +7,18 @@ use std::process::{Command, Stdio};
 use std::str::FromStr;
 
 fn main() {
-    let daily_commits = daily_commit_amount_randomizer();
-    let random_increments = commit_date_randomizer();
     let (day, month, file_path) = user_inputs();
-    function_that_does_the_job(daily_commits, random_increments, day, month, &file_path);
+    function_that_does_the_job(day, month, &file_path);
 }
 
-fn daily_commit_amount_randomizer() -> i32 {
-    let daily_commits = rand::thread_rng().gen_range(1..=4);
-    println!("{}", daily_commits);
-    daily_commits
-}
-
-fn commit_date_randomizer() -> i32 {
-    let random_increments = rand::thread_rng().gen_range(1..=6);
-    random_increments
-}
+//fn daily_commit_amount_randomizer() -> i32 {
+//    println!("{}", daily_commits);
+//    daily_commits
+//}
+//
+//fn commit_date_randomizer() -> i32 {
+//    random_increments
+//}
 
 // Month order mapping
 fn month_order() -> HashMap<&'static str, usize> {
@@ -60,18 +56,21 @@ fn order_to_month() -> HashMap<usize, &'static str> {
 }
 
 fn function_that_does_the_job(
-    daily_commits: i32,
-    random_increments: i32,
     day: String,
     mut month: String,
     file_path: &str,
 ) {
     let mut random_day = rand::thread_rng().gen_range(1..=31);
 
+
     let month_map = month_order();
     let order_map = order_to_month();
 
     loop {
+
+        let daily_commits = rand::thread_rng().gen_range(1..=4);
+        let random_increments = rand::thread_rng().gen_range(1..=6);
+
         for _ in 0..daily_commits {
             // Read file lines
             let lines = match read_file_lines(file_path) {
