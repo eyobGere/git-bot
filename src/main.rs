@@ -1,5 +1,5 @@
-use rand::{Rng, thread_rng};
 use rand::distributions::Alphanumeric;
+use rand::{thread_rng, Rng};
 use std::fs::{File, OpenOptions};
 use std::io::{self, BufRead, BufReader, Write};
 use std::process::{Command, Stdio};
@@ -23,69 +23,83 @@ fn commit_date_randomizer() -> i32 {
     random_increments
 }
 
-fn function_that_does_the_job(daily_commits: i32, _random_increments: i32, day: String, month: String, file_path: &str) {
-    for _ in 0..daily_commits {
-        // Read file lines
-        let lines = match read_file_lines(file_path) {
-            Ok(lines) => lines,
-            Err(e) => {
-                eprintln!("Error reading file: {}", e);
+fn function_that_does_the_job(
+    daily_commits: i32,
+    _random_increments: i32,
+    day: String,
+    month: String,
+    file_path: &str,
+) {
+    loop {
+        let random_day = rand::thread_rng().gen_range(1..=31);
+        
+        for _ in 0..daily_commits {
+            // Read file lines
+            let lines = match read_file_lines(file_path) {
+                Ok(lines) => lines,
+                Err(e) => {
+                    eprintln!("Error reading file: {}", e);
+                    return;
+                }
+            };
+
+            // Select random segment
+            if let Some(segment) = select_random_segment(&lines, 10, 80) {
+                // Create a new file with the selected segment
+                let new_file_path = "generated_file.txt";
+                if let Err(e) = write_segment_to_file(new_file_path, &segment) {
+                    eprintln!("Error writing to new file: {}", e);
+                    return;
+                }
+
+                // Stage the changes
+                if !run_command("git", &["add", new_file_path]) {
+                    eprintln!("Failed to stage the file");
+                    return;
+                }
+
+                // Commit the changes with a random message
+                let commit_message: String = thread_rng()
+                    .sample_iter(&Alphanumeric)
+                    .take(9)
+                    .map(char::from)
+                    .collect();
+                if !run_command("git", &["commit", "-m", &commit_message]) {
+                    eprintln!("Failed to commit the changes");
+                    return;
+                }
+
+                // Generate the amended date
+                let random_hour = rand::thread_rng().gen_range(0..=23);
+                let random_minute = rand::thread_rng().gen_range(0..=59);
+                let random_second = rand::thread_rng().gen_range(0..=59);
+                let _commit_date = format!(
+                    "{} {} {} {:02}:{:02}:{:02} 2024",
+                    day, month, random_day, random_hour, random_minute, random_second
+                );
+
+                // Amend the commit with the new date
+                let amend_command = format!(
+                    "GIT_COMMITTER_DATE=\"{} {} {} {:02}:{:02}:{:02} 2024\" git commit --date=\"{} {} {} {:02}:{:02}:{:02} 2024\" --amend --no-edit",
+                    day, month, random_day, random_hour, random_minute, random_second,
+                    day, month, random_day, random_hour, random_minute, random_second
+                );
+
+                if !run_command_shell(&amend_command) {
+                    eprintln!("Failed to amend the commit");
+                    return;
+                }
+                // Push the changes
+                if !run_command("git", &["push", "origin", "main", "--force"]) {
+                    eprintln!("Failed to push the changes");
+                    return;
+                }
+            } else {
+                eprintln!("Not enough lines to select a valid segment.");
                 return;
             }
-        };
-
-        // Select random segment
-        if let Some(segment) = select_random_segment(&lines, 10, 80) {
-            // Create a new file with the selected segment
-            let new_file_path = "generated_file.txt";
-            if let Err(e) = write_segment_to_file(new_file_path, &segment) {
-                eprintln!("Error writing to new file: {}", e);
-                return;
-            }
-
-            // Stage the changes
-            if !run_command("git", &["add", new_file_path]) {
-                eprintln!("Failed to stage the file");
-                return;
-            }
-
-            // Commit the changes with a random message
-            let commit_message: String = thread_rng().sample_iter(&Alphanumeric).take(9).map(char::from).collect();
-            if !run_command("git", &["commit", "-m", &commit_message]) {
-                eprintln!("Failed to commit the changes");
-                return;
-            }
-
-            // Generate the amended date
-            let random_hour = rand::thread_rng().gen_range(0..=23);
-            let random_minute = rand::thread_rng().gen_range(0..=59);
-            let random_second = rand::thread_rng().gen_range(0..=59);
-            let random_day = rand::thread_rng().gen_range(1..=31);
-            let commit_date = format!(
-                "{} {} {} {:02}:{:02}:{:02} 2024",
-                day,
-                month,
-                random_day,
-                random_hour,
-                random_minute,
-                random_second
-            );
-
-            // Amend the commit with the new date
-            if !run_command("git", &["commit", "--amend", "--no-edit", "--date", &commit_date]) {
-                eprintln!("Failed to amend the commit");
-                return;
-            }
-
-            // Push the changes
-            if !run_command("git", &["push","origin", "main", "--force"]) {
-                eprintln!("Failed to push the changes");
-                return;
-            }
-        } else {
-            eprintln!("Not enough lines to select a valid segment.");
-            return;
         }
+        break;
     }
 }
 
@@ -95,7 +109,11 @@ fn read_file_lines(path: &str) -> Result<Vec<String>, io::Error> {
     reader.lines().collect()
 }
 
-fn select_random_segment<'a>(lines: &'a [String], min_gap: usize, max_gap: usize) -> Option<Vec<&'a String>> {
+fn select_random_segment<'a>(
+    lines: &'a [String],
+    min_gap: usize,
+    max_gap: usize,
+) -> Option<Vec<&'a String>> {
     let total_lines = lines.len();
 
     if total_lines < max_gap {
@@ -104,18 +122,36 @@ fn select_random_segment<'a>(lines: &'a [String], min_gap: usize, max_gap: usize
 
     let mut rng = rand::thread_rng();
     let start_index = rng.gen_range(0..total_lines - min_gap);
-    let end_index = rng.gen_range((start_index + min_gap).min(total_lines - 1)..=(start_index + max_gap).min(total_lines - 1));
+    let end_index = rng.gen_range(
+        (start_index + min_gap).min(total_lines - 1)..=(start_index + max_gap).min(total_lines - 1),
+    );
 
     let segment = lines[start_index..=end_index].iter().collect();
     Some(segment)
 }
 
 fn write_segment_to_file(path: &str, segment: &[&String]) -> io::Result<()> {
-    let mut file = OpenOptions::new().write(true).create(true).truncate(true).open(path)?;
+    let mut file = OpenOptions::new()
+        .write(true)
+        .create(true)
+        .truncate(true)
+        .open(path)?;
     for line in segment {
         writeln!(file, "{}", line)?;
     }
     Ok(())
+}
+
+fn run_command_shell(command: &str) -> bool {
+    let output = Command::new("sh")
+        .arg("-c")
+        .arg(command)
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit())
+        .output()
+        .expect("Failed to execute command");
+
+    output.status.success()
 }
 
 fn run_command(command: &str, args: &[&str]) -> bool {
@@ -219,4 +255,3 @@ fn user_inputs() -> (String, String, String) {
 
     (day, month, file_path)
 }
-
