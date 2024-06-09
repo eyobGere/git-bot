@@ -1,5 +1,6 @@
 use rand::distributions::Alphanumeric;
 use rand::{thread_rng, Rng};
+use std::collections::HashMap;
 use std::fs::{File, OpenOptions};
 use std::io::{self, BufRead, BufReader, Write};
 use std::process::{Command, Stdio};
@@ -23,16 +24,54 @@ fn commit_date_randomizer() -> i32 {
     random_increments
 }
 
+// Month order mapping
+fn month_order() -> HashMap<&'static str, usize> {
+    let mut month_map = HashMap::new();
+    month_map.insert("Jan", 1);
+    month_map.insert("Feb", 2);
+    month_map.insert("Mar", 3);
+    month_map.insert("Apr", 4);
+    month_map.insert("May", 5);
+    month_map.insert("Jun", 6);
+    month_map.insert("Jul", 7);
+    month_map.insert("Aug", 8);
+    month_map.insert("Sep", 9);
+    month_map.insert("Oct", 10);
+    month_map.insert("Nov", 11);
+    month_map.insert("Dec", 12);
+    month_map
+}
+
+fn order_to_month() -> HashMap<usize, &'static str> {
+    let mut month_map = HashMap::new();
+    month_map.insert(1, "Jan");
+    month_map.insert(2, "Feb");
+    month_map.insert(3, "Mar");
+    month_map.insert(4, "Apr");
+    month_map.insert(5, "May");
+    month_map.insert(6, "Jun");
+    month_map.insert(7, "Jul");
+    month_map.insert(8, "Aug");
+    month_map.insert(9, "Sep");
+    month_map.insert(10, "Oct");
+    month_map.insert(11, "Nov");
+    month_map.insert(12, "Dec");
+    month_map
+}
+
 fn function_that_does_the_job(
     daily_commits: i32,
-    _random_increments: i32,
+    random_increments: i32,
     day: String,
-    month: String,
+    mut month: String,
     file_path: &str,
 ) {
+    let mut random_day = rand::thread_rng().gen_range(1..=31);
+
+    let month_map = month_order();
+    let order_map = order_to_month();
+
     loop {
-        let random_day = rand::thread_rng().gen_range(1..=31);
-        
         for _ in 0..daily_commits {
             // Read file lines
             let lines = match read_file_lines(file_path) {
@@ -73,22 +112,22 @@ fn function_that_does_the_job(
                 let random_hour = rand::thread_rng().gen_range(0..=23);
                 let random_minute = rand::thread_rng().gen_range(0..=59);
                 let random_second = rand::thread_rng().gen_range(0..=59);
-                let _commit_date = format!(
+                let commit_date = format!(
                     "{} {} {} {:02}:{:02}:{:02} 2024",
                     day, month, random_day, random_hour, random_minute, random_second
                 );
 
                 // Amend the commit with the new date
                 let amend_command = format!(
-                    "GIT_COMMITTER_DATE=\"{} {} {} {:02}:{:02}:{:02} 2024\" git commit --date=\"{} {} {} {:02}:{:02}:{:02} 2024\" --amend --no-edit",
-                    day, month, random_day, random_hour, random_minute, random_second,
-                    day, month, random_day, random_hour, random_minute, random_second
+                    "GIT_COMMITTER_DATE=\"{}\" git commit --date=\"{}\" --amend --no-edit",
+                    commit_date, commit_date
                 );
 
                 if !run_command_shell(&amend_command) {
                     eprintln!("Failed to amend the commit");
                     return;
                 }
+
                 // Push the changes
                 if !run_command("git", &["push", "origin", "main", "--force"]) {
                     eprintln!("Failed to push the changes");
@@ -99,7 +138,34 @@ fn function_that_does_the_job(
                 return;
             }
         }
-        break;
+
+        // Increment the random day
+        random_day += random_increments;
+
+        // Check if random_day exceeds 31 and adjust month accordingly
+        if random_day > 31 {
+            random_day -= 31;
+            if let Some(&current_month_order) = month_map.get(month.as_str()) {
+                let next_month_order = if current_month_order == 12 {
+                    1
+                } else {
+                    current_month_order + 1
+                };
+                if let Some(&next_month) = order_map.get(&next_month_order) {
+                    month = next_month.to_string();
+                }
+            } else {
+                eprintln!("Invalid month: {}", month);
+                return;
+            }
+        }
+        //counter for the break condition
+        let mut loop_counter = 0;
+        loop_counter = loop_counter + 1;
+        let max_loops = 30;
+        if loop_counter>=max_loops{
+            break;
+        }
     }
 }
 
