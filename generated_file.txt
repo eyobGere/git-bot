@@ -9,4 +9,3 @@
     let month = month.trim().to_string();
 
     (day, month)
-}
