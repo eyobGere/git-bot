@@ -1,12 +1,11 @@
+        Mar,
+        Apr,
+        May,
+        Jun,
+        Jul,
+        Aug,
+        Sep,
+        Oct,
+        Nov,
+        Dec,
     }
-
-    impl FromStr for Date {
-        type Err = ();
-
-        fn from_str(input: &str) -> Result<Date, Self::Err> {
-            match input {
-                "Mon" => Ok(Date::Mon),
-                "Tue" => Ok(Date::Tue),
-                "Wed" => Ok(Date::Wed),
-                "Thu" => Ok(Date::Thu),
-                "Fri" => Ok(Date::Fri),
